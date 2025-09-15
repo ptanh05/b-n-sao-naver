@@ -6,7 +6,10 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "api:build": "tsc -p api/tsconfig.json",
+    "api:start": "node api/dist/server.js",
+    "api:dev": "tsc -p api/tsconfig.json -w"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -42,11 +45,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "date-fns": "latest",
     "embla-carousel-react": "8.5.1",
     "express": "^5.1.0",
     "geist": "^1.3.1",
     "input-otp": "1.4.1",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
     "next-themes": "^0.4.6",
@@ -66,6 +72,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.13",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/pg": "^8.15.5",
     "@types/react": "^18",

@@ -20,3 +20,16 @@ export interface TaskFormData {
 }
 
 export type ViewMode = "list" | "calendar" | "priority" | "analytics" | "schedule" | "insights"
+
+// Auth-related types moved here to remove dependency on local auth manager
+export interface User {
+  id: string
+  email: string
+  fullName: string
+  createdAt: string
+}
+
+export interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+}

@@ -12,96 +12,61 @@ const HABITS_KEY = "time-management-habits"
 const SETTINGS_KEY = "time-management-settings"
 
 export const storage = {
-  getTasks: (): Task[] => {
-    if (typeof window === "undefined") return []
-    try {
-      const data = localStorage.getItem(getUserStorageKey(TASKS_KEY))
-      if (!data) return []
-      const tasks = JSON.parse(data)
-      return tasks.map((task: any) => ({
-        ...task,
-        deadline: task.deadline ? new Date(task.deadline) : undefined,
-        scheduledAt: task.scheduledAt ? new Date(task.scheduledAt) : undefined,
-        createdAt: new Date(task.createdAt),
-        updatedAt: new Date(task.updatedAt),
-      }))
-    } catch (error) {
-      console.error("Error loading tasks:", error)
-      return []
-    }
+  // Tích hợp backend API cho các thao tác lưu trữ
+  getTasks: async (): Promise<Task[]> => {
+    const res = await fetch('/api/entities/tasks')
+    if (!res.ok) return []
+    return await res.json()
   },
 
-  saveTasks: (tasks: Task[]): void => {
-    if (typeof window === "undefined") return
-    try {
-      localStorage.setItem(getUserStorageKey(TASKS_KEY), JSON.stringify(tasks))
-    } catch (error) {
-      console.error("Error saving tasks:", error)
-    }
+  saveTasks: async (tasks: Task[]): Promise<void> => {
+    await fetch('/api/entities/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tasks),
+    })
   },
 
-  getHabits: (): any[] => {
-    if (typeof window === "undefined") return []
-    try {
-      const data = localStorage.getItem(getUserStorageKey(HABITS_KEY))
-      return data ? JSON.parse(data) : []
-    } catch (error) {
-      console.error("Error loading habits:", error)
-      return []
-    }
+  getHabits: async (): Promise<any[]> => {
+    const res = await fetch('/api/entities/habits')
+    if (!res.ok) return []
+    return await res.json()
   },
 
-  saveHabits: (habits: any[]): void => {
-    if (typeof window === "undefined") return
-    try {
-      localStorage.setItem(getUserStorageKey(HABITS_KEY), JSON.stringify(habits))
-    } catch (error) {
-      console.error("Error saving habits:", error)
-    }
+  saveHabits: async (habits: any[]): Promise<void> => {
+    await fetch('/api/entities/habits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(habits),
+    })
   },
 
-  getSettings: (): any => {
-    if (typeof window === "undefined") return {}
-    try {
-      const data = localStorage.getItem(getUserStorageKey(SETTINGS_KEY))
-      return data ? JSON.parse(data) : {}
-    } catch (error) {
-      console.error("Error loading settings:", error)
-      return {}
-    }
+  getSettings: async (): Promise<any> => {
+    const res = await fetch('/api/entities/settings')
+    if (!res.ok) return {}
+    return await res.json()
   },
 
-  saveSettings: (settings: any): void => {
-    if (typeof window === "undefined") return
-    try {
-      localStorage.setItem(getUserStorageKey(SETTINGS_KEY), JSON.stringify(settings))
-    } catch (error) {
-      console.error("Error saving settings:", error)
-    }
+  saveSettings: async (settings: any): Promise<void> => {
+    await fetch('/api/entities/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    })
   },
 
-  exportTasks: (): string => {
-    const tasks = storage.getTasks()
+  exportTasks: async (): Promise<string> => {
+    const tasks = await storage.getTasks()
     return JSON.stringify(tasks, null, 2)
   },
 
-  importTasks: (jsonData: string): Task[] => {
-    try {
-      const tasks = JSON.parse(jsonData)
-      storage.saveTasks(tasks)
-      return tasks
-    } catch (error) {
-      console.error("Error importing tasks:", error)
-      throw new Error("Invalid JSON format")
-    }
+  importTasks: async (jsonData: string): Promise<Task[]> => {
+    const tasks = JSON.parse(jsonData)
+    await storage.saveTasks(tasks)
+    return tasks
   },
 
-  clearUserData: (): void => {
-    const user = authManager.getCurrentUser()
-    if (!user) return
-
-    localStorage.removeItem(getUserStorageKey(TASKS_KEY))
-    localStorage.removeItem(getUserStorageKey(HABITS_KEY))
-    localStorage.removeItem(getUserStorageKey(SETTINGS_KEY))
+  clearUserData: async (): Promise<void> => {
+    await fetch('/api/entities/clear', { method: 'POST' })
   },
 }

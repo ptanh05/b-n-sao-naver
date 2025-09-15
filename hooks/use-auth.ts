@@ -1,8 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { authManager, type AuthState } from "@/lib/auth"
-import { storage } from "@/lib/storage"
+import type { AuthState } from "@/lib/types"
+import { api, endpoints } from "@/lib/api"
+
+type AuthResponse = {
+  success: boolean
+  message: string
+  user?: {
+    id: string
+    email: string
+    fullName: string
+    createdAt: string
+  }
+}
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
@@ -11,42 +22,57 @@ export function useAuth() {
   })
 
   useEffect(() => {
-    const user = authManager.getCurrentUser()
-    setAuthState({
-      user,
-      isAuthenticated: user !== null,
-    })
+    const loadMe = async () => {
+      try {
+        const me = await api.get<AuthResponse>(endpoints.me)
+        setAuthState({ user: me.user ?? null, isAuthenticated: Boolean(me.user) })
+      } catch {
+        setAuthState({ user: null, isAuthenticated: false })
+      }
+    }
+    loadMe()
   }, [])
 
-  const login = (email: string, password: string) => {
-    const result = authManager.login(email, password)
-    if (result.success && result.user) {
-      setAuthState({
-        user: result.user,
-        isAuthenticated: true,
+  const login = async (email: string, password: string): Promise<AuthResponse> => {
+    try {
+      const res = await api.post<AuthResponse, { email: string; password: string }>(endpoints.login, {
+        email,
+        password,
       })
+      if (res.success && res.user) {
+        setAuthState({ user: res.user, isAuthenticated: true })
+      }
+      return res
+    } catch (err: any) {
+      return { success: false, message: err?.message || "Đăng nhập thất bại" }
     }
-    return result
   }
 
-  const register = (email: string, password: string, fullName: string) => {
-    const result = authManager.register(email, password, fullName)
-    if (result.success && result.user) {
-      setAuthState({
-        user: result.user,
-        isAuthenticated: true,
-      })
+  const register = async (
+    email: string,
+    password: string,
+    fullName: string,
+  ): Promise<AuthResponse> => {
+    try {
+      const res = await api.post<AuthResponse, { email: string; password: string; fullName: string }>(
+        endpoints.register,
+        { email, password, fullName },
+      )
+      if (res.success && res.user) {
+        setAuthState({ user: res.user, isAuthenticated: true })
+      }
+      return res
+    } catch (err: any) {
+      return { success: false, message: err?.message || "Đăng ký thất bại" }
     }
-    return result
   }
 
-  const logout = () => {
-    storage.clearUserData()
-    authManager.logout()
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-    })
+  const logout = async (): Promise<void> => {
+    try {
+      await api.post<void>(endpoints.logout)
+    } finally {
+      setAuthState({ user: null, isAuthenticated: false })
+    }
   }
 
   return {

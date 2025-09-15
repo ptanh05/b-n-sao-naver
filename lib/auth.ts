@@ -22,96 +22,51 @@ class AuthManager {
   }
 
   constructor() {
-    this.loadUserFromStorage()
+    // Khởi tạo không cần loadUserFromStorage nữa
   }
 
-  private loadUserFromStorage() {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const userData = window.localStorage.getItem("currentUser")
-      if (userData) {
-        this.currentUser = JSON.parse(userData)
-      }
+  async register(email: string, password: string, fullName: string): Promise<{ success: boolean; message: string; user?: User }> {
+    const res = await fetch('/api/entities/users/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, fullName }),
+    })
+    return await res.json()
+  }
+
+  async login(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
+    const res = await fetch('/api/entities/users/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const result = await res.json()
+    if (result.success && result.user) {
+      this.currentUser = result.user
     }
+    return result
   }
 
-  private saveUserToStorage(user: User) {
-    localStorage.setItem("currentUser", JSON.stringify(user))
-    this.currentUser = user
-  }
-
-  private clearUserFromStorage() {
-    localStorage.removeItem("currentUser")
+  async logout(): Promise<void> {
+    await fetch('/api/entities/users/logout', { method: 'POST' })
     this.currentUser = null
   }
 
-  register(email: string, password: string, fullName: string): { success: boolean; message: string; user?: User } {
-    // Check if user already exists
-    const users = this.getAllUsers()
-    if (users.find((u) => u.email === email)) {
-      return { success: false, message: "Email đã được sử dụng" }
-    }
-
-    // Create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      fullName,
-      createdAt: new Date().toISOString(),
-    }
-
-    // Save user credentials
-    const userCredentials = { email, password }
-    localStorage.setItem(`user_${newUser.id}`, JSON.stringify(userCredentials))
-
-    // Add to users list
-    users.push(newUser)
-    localStorage.setItem("users", JSON.stringify(users))
-
-    // Auto login after registration
-    this.saveUserToStorage(newUser)
-
-    return { success: true, message: "Đăng ký thành công", user: newUser }
+  async getCurrentUser(): Promise<User | null> {
+    const res = await fetch('/api/entities/users/me')
+    if (!res.ok) return null
+    const user = await res.json()
+    this.currentUser = user
+    return user
   }
 
-  login(email: string, password: string): { success: boolean; message: string; user?: User } {
-    const users = this.getAllUsers()
-    const user = users.find((u) => u.email === email)
-
-    if (!user) {
-      return { success: false, message: "Email không tồn tại" }
-    }
-
-    // Check password
-    const userCredentials = localStorage.getItem(`user_${user.id}`)
-    if (userCredentials) {
-      const { password: storedPassword } = JSON.parse(userCredentials)
-      if (storedPassword !== password) {
-        return { success: false, message: "Mật khẩu không đúng" }
-      }
-    } else {
-      return { success: false, message: "Lỗi xác thực" }
-    }
-
-    this.saveUserToStorage(user)
-    return { success: true, message: "Đăng nhập thành công", user }
+  async isAuthenticated(): Promise<boolean> {
+    const user = await this.getCurrentUser()
+    return !!user
   }
 
-  logout() {
-    this.clearUserFromStorage()
+  async getAllUsers(): Promise<User[]> {
+    const res = await fetch('/api/entities/users')
+    if (!res.ok) return []
+    return await res.json()
   }
-
-  getCurrentUser(): User | null {
-    return this.currentUser
-  }
-
-  isAuthenticated(): boolean {
-    return this.currentUser !== null
-  }
-
-  private getAllUsers(): User[] {
-    const users = localStorage.getItem("users")
-    return users ? JSON.parse(users) : []
-  }
-}
-
-export const authManager = AuthManager.getInstance()
