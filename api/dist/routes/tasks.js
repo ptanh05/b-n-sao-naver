@@ -19,11 +19,17 @@ function getUserIdFromJWT(req) {
         return null;
     }
 }
+function requireAuth(req, res, next) {
+    const userId = getUserIdFromJWT(req);
+    if (!userId)
+        return res.status(401).json({ message: 'Unauthorized' });
+    req.userId = userId;
+    next();
+}
+router.use(requireAuth);
 router.get('/', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const result = await db_1.pool.query('SELECT * FROM tasks WHERE user_id=$1 ORDER BY created_at DESC', [userId]);
         res.json(result.rows);
     }
@@ -33,9 +39,7 @@ router.get('/', async (req, res) => {
 });
 router.post('/', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const { title, description, deadline, priority, estimatedMinutes } = req.body || {};
         if (!title)
             return res.status(400).json({ message: 'title required' });
@@ -49,9 +53,7 @@ router.post('/', async (req, res) => {
 });
 router.put('/:id', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const { id } = req.params;
         const { title, description, deadline, status, priority, estimatedMinutes, scheduledAt } = req.body || {};
         const result = await db_1.pool.query(`UPDATE tasks SET
@@ -75,9 +77,7 @@ router.put('/:id', async (req, res) => {
 });
 router.delete('/:id', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const { id } = req.params;
         const result = await db_1.pool.query('DELETE FROM tasks WHERE id=$1 AND user_id=$2', [id, userId]);
         if (result.rowCount === 0)
@@ -90,9 +90,7 @@ router.delete('/:id', async (req, res) => {
 });
 router.get('/export', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const result = await db_1.pool.query('SELECT * FROM tasks WHERE user_id=$1', [userId]);
         res.json({ data: JSON.stringify(result.rows) });
     }
@@ -102,9 +100,7 @@ router.get('/export', async (req, res) => {
 });
 router.post('/import', async (req, res) => {
     try {
-        const userId = getUserIdFromJWT(req);
-        if (!userId)
-            return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.userId;
         const { data } = req.body || {};
         if (typeof data !== 'string')
             return res.status(400).json({ message: 'Invalid data' });
