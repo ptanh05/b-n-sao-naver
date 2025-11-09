@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     userScalable: true,
   },
   themeColor: "#15803d",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -24,7 +25,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/placeholder-logo.png",
-    apple: "/placeholder-logo.png",
+    apple: [
+      {
+        url: "/icon-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
   },
 };
 
@@ -35,14 +42,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/placeholder-logo.png" />
-        <meta name="theme-color" content="#15803d" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Time Management" />
-      </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         {children}
         <Analytics />
