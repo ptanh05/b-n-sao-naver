@@ -1,0 +1,36 @@
+{
+  "name": "Time Management App - Quản lý thời gian",
+  "short_name": "Time Management",
+  "description": "Ứng dụng quản lý thời gian dành cho sinh viên Việt Nam",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#15803d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/placeholder-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/placeholder-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "education"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Tạo nhiệm vụ mới",
+      "short_name": "Tạo mới",
+      "description": "Tạo nhiệm vụ mới nhanh chóng",
+      "url": "/?action=new-task",
+      "icons": [{ "src": "/placeholder-logo.png", "sizes": "96x96" }]
+    }
+  ]
+}
+

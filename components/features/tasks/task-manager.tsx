@@ -6,13 +6,15 @@ import { useState } from "react";
 import type { Task, ViewMode } from "@/lib/types";
 import { useTasks } from "@/hooks/use-tasks";
 import { useAuth } from "@/hooks/use-auth";
+import { useReminders } from "@/hooks/use-reminders";
 import { TaskCard } from "./task-card";
 import { TaskModal } from "./task-modal";
-import { CalendarView } from "./calendar-view";
-import { AnalyticsView } from "./analytics-view";
-import { SyncManager } from "./sync-manager";
-import { ScheduleOptimizer } from "./schedule-optimizer";
-import { ProductivityInsights } from "./productivity-insights";
+import { CalendarView } from "../scheduling/calendar-view";
+import { AnalyticsView } from "../analytics/analytics-view";
+import { SyncManager } from "../sync/sync-manager";
+import { ScheduleOptimizer } from "../scheduling/schedule-optimizer";
+import { ProductivityInsights } from "../analytics/productivity-insights";
+import { TaskTemplateSelector } from "./task-template-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +25,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { taskCategories } from "@/lib/task-categories";
+import { searchTasks } from "@/lib/search-utils";
+import { exportToPDF, exportToCSV, importFromCSV } from "@/lib/export-utils";
 
 export function TaskManager() {
   const {
@@ -39,6 +44,9 @@ export function TaskManager() {
 
   const { user, logout } = useAuth();
 
+  // Enable reminders for tasks with deadlines
+  useReminders(tasks);
+
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
@@ -47,23 +55,28 @@ export function TaskManager() {
     "all"
   );
   const [priorityFilter, setPriorityFilter] = useState<number | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
+  const [tagFilter, setTagFilter] = useState<string | "all">("all");
   const [showSyncManager, setShowSyncManager] = useState(false);
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ??
-        false);
-    const matchesStatus =
-      statusFilter === "all" || task.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || task.priority === priorityFilter;
-
-    return matchesSearch && matchesStatus && matchesPriority;
+  const filteredTasks = searchTasks(tasks, {
+    query: searchQuery,
+    status: statusFilter,
+    priority: priorityFilter,
+    category: categoryFilter,
+    tags: tagFilter !== "all" ? [tagFilter] : [],
   });
 
   const handleCreateTask = async (taskData: any) => {
     await createTask(taskData);
+  };
+
+  const [templateData, setTemplateData] = useState<any>(null);
+
+  const handleSelectTemplate = (templateData: any) => {
+    setEditingTask(undefined);
+    setTemplateData(templateData);
+    setIsModalOpen(true);
   };
 
   const handleEditTask = (task: Task) => {
@@ -110,22 +123,50 @@ export function TaskManager() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPDF = async () => {
+    await exportToPDF(tasks);
+  };
+
+  const handleExportCSV = () => {
+    const csvContent = exportToCSV(tasks);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tasks-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const jsonData = e.target?.result as string;
-        (async () => {
+        const content = e.target?.result as string;
+        const fileExtension = file.name.split(".").pop()?.toLowerCase();
+
+        if (fileExtension === "csv") {
+          // Import CSV
+          const importedTasks = importFromCSV(content);
+          let successCount = 0;
+          for (const taskData of importedTasks) {
+            const result = await createTask(taskData as any);
+            if (result) successCount++;
+          }
+          alert(`Import CSV thành công! Đã thêm ${successCount}/${importedTasks.length} nhiệm vụ.`);
+        } else {
+          // Import JSON
+          const jsonData = content;
           const success = await importTasks(jsonData);
           if (success) {
-            alert("Import thành công!");
+            alert("Import JSON thành công!");
           } else {
             alert("Import thất bại. Vui lòng kiểm tra định dạng file.");
           }
-        })();
+        }
       } catch (error) {
         alert("Import thất bại. Vui lòng kiểm tra định dạng file.");
       }
@@ -148,6 +189,15 @@ export function TaskManager() {
   const todoTasks = getTasksByStatus("todo");
   const inProgressTasks = getTasksByStatus("in_progress");
   const doneTasks = getTasksByStatus("done");
+
+  // Get all unique tags from tasks
+  const allTags = Array.from(
+    new Set(
+      tasks
+        .flatMap((task) => task.tags || [])
+        .filter((tag) => tag && tag.trim().length > 0)
+    )
+  ).sort();
 
   if (loading) {
     return (
@@ -192,39 +242,41 @@ export function TaskManager() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
               Quản lý thời gian
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm md:text-base text-muted-foreground">
               Tổ chức và theo dõi các nhiệm vụ của bạn một cách hiệu quả
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-sm font-medium text-foreground">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-4">
+            <div className="text-left sm:text-right">
+              <div className="text-xs sm:text-sm font-medium text-foreground">
                 Xin chào, {user?.fullName}
               </div>
-              <div className="text-xs text-muted-foreground">{user?.email}</div>
+              <div className="text-xs text-muted-foreground hidden sm:block">{user?.email}</div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setShowSyncManager(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                size="sm"
               >
-                <span className="text-sm">⚙️</span>
-                Đồng bộ
+                <span>⚙️</span>
+                <span className="hidden sm:inline">Đồng bộ</span>
               </Button>
               <Button
                 variant="outline"
                 onClick={handleLogout}
-                className="flex items-center gap-2 bg-transparent"
+                className="flex items-center gap-2 bg-transparent flex-1 sm:flex-initial text-xs sm:text-sm"
+                size="sm"
               >
-                <span className="text-sm">🚪</span>
-                Đăng xuất
+                <span>🚪</span>
+                <span className="hidden sm:inline">Đăng xuất</span>
               </Button>
             </div>
           </div>
@@ -310,16 +362,57 @@ export function TaskManager() {
               <SelectItem value="1">Thấp nhất (1)</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select
+            value={categoryFilter}
+            onValueChange={(value: any) => setCategoryFilter(value)}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Danh mục" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả danh mục</SelectItem>
+              {taskCategories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.icon} {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {allTags.length > 0 && (
+            <Select
+              value={tagFilter}
+              onValueChange={(value: any) => setTagFilter(value)}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tags</SelectItem>
+                {allTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>
+                    {tag}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingTask(undefined);
+              setIsModalOpen(true);
+            }}
             className="flex items-center gap-2"
           >
             <span>➕</span>
             Tạo nhiệm vụ
           </Button>
+
+          <TaskTemplateSelector onSelectTemplate={handleSelectTemplate} />
 
           <Button
             variant="outline"
@@ -330,26 +423,54 @@ export function TaskManager() {
             Export
           </Button>
 
+          <Button
+            variant="outline"
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-transparent"
+            title="Export PDF"
+          >
+            <span>📄</span>
+            <span className="hidden sm:inline">PDF</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-transparent"
+            title="Export CSV"
+          >
+            <span>📊</span>
+            <span className="hidden sm:inline">CSV</span>
+          </Button>
+
           <div className="relative">
+            <label htmlFor="import-file" className="sr-only">
+              Import tasks from file
+            </label>
             <input
+              id="import-file"
               type="file"
-              accept=".json"
+              accept=".json,.csv"
               onChange={handleImport}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Import tasks from file"
             />
             <Button
               variant="outline"
               className="flex items-center gap-2 bg-transparent"
+              asChild
             >
-              <span>📤</span>
-              Import
+              <span>
+                <span>📤</span>
+                <span className="hidden sm:inline">Import</span>
+              </span>
             </Button>
           </div>
         </div>
       </div>
 
       {/* View Mode Tabs */}
-      <div className="flex gap-2 mb-6 border-b overflow-x-auto">
+      <div className="flex gap-2 mb-6 border-b overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
         <button
           onClick={() => setViewMode("list")}
           className={cn(
@@ -571,10 +692,13 @@ export function TaskManager() {
         onClose={() => {
           setIsModalOpen(false);
           setEditingTask(undefined);
+          setTemplateData(null);
         }}
         onSave={editingTask ? handleUpdateTask : handleCreateTask}
         task={editingTask}
+        templateData={templateData}
       />
     </div>
   );
 }
+

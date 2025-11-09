@@ -256,3 +256,4 @@ export function TaskModal({ isOpen, onClose, onSave, task, templateData }: TaskM
     </Dialog>
   )
 }
+

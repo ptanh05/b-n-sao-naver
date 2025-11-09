@@ -360,3 +360,4 @@ export function AnalyticsView({ tasks }: AnalyticsViewProps) {
     </div>
   )
 }
+

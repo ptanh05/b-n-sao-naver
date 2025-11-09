@@ -320,24 +320,32 @@ export function SyncManager({
               </Button>
 
               <div className="relative">
+                <label htmlFor="import-file" className="sr-only">
+                  Import tasks from file
+                </label>
                 <input
+                  id="import-file"
                   type="file"
                   accept=".json"
                   onChange={handleImportRestore}
                   disabled={isImporting || syncStatus === "syncing"}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Import tasks from file"
                 />
                 <Button
                   variant="outline"
                   disabled={isImporting || syncStatus === "syncing"}
                   className="flex items-center gap-2 w-full bg-transparent"
+                  asChild
                 >
-                  {isImporting ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Khôi phục từ file
+                  <span>
+                    {isImporting ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Khôi phục từ file
+                  </span>
                 </Button>
               </div>
 
@@ -352,7 +360,7 @@ export function SyncManager({
                 ) : (
                   <Cloud className="h-4 w-4" />
                 )}
-                Đồng bộ cloud (Demo)
+                Đồng bộ cloud
               </Button>
             </div>
           </div>
@@ -402,3 +410,4 @@ export function SyncManager({
     </div>
   );
 }
+

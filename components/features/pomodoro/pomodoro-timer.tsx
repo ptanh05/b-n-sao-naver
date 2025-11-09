@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Task } from "@/lib/types"
+import { usePomodoro } from "@/hooks/use-pomodoro"
+import { notificationService } from "@/lib/notifications"
 
 interface PomodoroTimerProps {
   tasks: Task[]
@@ -13,16 +15,21 @@ interface PomodoroTimerProps {
 }
 
 export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
+  const { createSession, getTodaySessions } = usePomodoro()
   const [selectedTaskId, setSelectedTaskId] = useState<string>("")
   const [timeLeft, setTimeLeft] = useState(25 * 60) // 25 minutes in seconds
   const [isRunning, setIsRunning] = useState(false)
   const [isBreak, setIsBreak] = useState(false)
-  const [pomodoroCount, setPomodoroCount] = useState(0)
   const [workDuration, setWorkDuration] = useState(25)
   const [breakDuration, setBreakDuration] = useState(5)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const todaySessions = getTodaySessions()
+  const pomodoroCount = todaySessions.filter((s) => s.status === "completed").length
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -40,24 +47,28 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
     }
   }, [isRunning, timeLeft])
 
-  const handleTimerComplete = () => {
+  const handleTimerComplete = async () => {
     setIsRunning(false)
+
+    // Save session to database
+    if (sessionStartTime && !isBreak) {
+      const endTime = new Date()
+      await createSession(sessionStartTime, endTime, "completed")
+      setSessionStartTime(null)
+      setCurrentSessionId(null)
+    }
 
     // Play notification sound (if available)
     if (audioRef.current) {
       audioRef.current.play().catch(() => {
         // Fallback to browser notification
-        if (Notification.permission === "granted") {
-          new Notification(isBreak ? "Nghỉ giải lao kết thúc!" : "Pomodoro hoàn thành!", {
-            body: isBreak ? "Hãy quay lại làm việc" : "Hãy nghỉ giải lao",
-            icon: "/favicon.ico",
-          })
-        }
+        notificationService.showPomodoroComplete(isBreak)
       })
+    } else {
+      notificationService.showPomodoroComplete(isBreak)
     }
 
     if (!isBreak) {
-      setPomodoroCount((prev) => prev + 1)
       setIsBreak(true)
       setTimeLeft(breakDuration * 60)
 
@@ -71,7 +82,16 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
     }
   }
 
-  const toggleTimer = () => {
+  const toggleTimer = async () => {
+    if (!isRunning && !isBreak && !sessionStartTime) {
+      // Start new session
+      const startTime = new Date()
+      setSessionStartTime(startTime)
+      const session = await createSession(startTime, undefined, "in_progress")
+      if (session) {
+        setCurrentSessionId(session.id)
+      }
+    }
     setIsRunning(!isRunning)
   }
 
@@ -79,6 +99,8 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
     setIsRunning(false)
     setIsBreak(false)
     setTimeLeft(workDuration * 60)
+    setSessionStartTime(null)
+    setCurrentSessionId(null)
   }
 
   const formatTime = (seconds: number) => {
@@ -113,9 +135,9 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
         <CardContent className="space-y-6">
           {/* Task Selection */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Chọn nhiệm vụ để tập trung</label>
+            <label htmlFor="pomodoro-task-select" className="text-sm font-medium mb-2 block">Chọn nhiệm vụ để tập trung</label>
             <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-              <SelectTrigger>
+              <SelectTrigger id="pomodoro-task-select">
                 <SelectValue placeholder="Chọn nhiệm vụ..." />
               </SelectTrigger>
               <SelectContent>
@@ -165,6 +187,7 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
                 onClick={toggleTimer}
                 size="lg"
                 className={isRunning ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                aria-label={isRunning ? "Tạm dừng timer" : "Bắt đầu timer"}
               >
                 {isRunning ? (
                   <>
@@ -179,7 +202,7 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
                 )}
               </Button>
 
-              <Button onClick={resetTimer} variant="outline" size="lg">
+              <Button onClick={resetTimer} variant="outline" size="lg" aria-label="Đặt lại timer">
                 <span className="mr-2">🔄</span>
                 Đặt lại
               </Button>
@@ -189,7 +212,7 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
           {/* Settings */}
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div>
-              <label className="text-sm font-medium">Thời gian làm việc (phút)</label>
+              <label htmlFor="work-duration" className="text-sm font-medium">Thời gian làm việc (phút)</label>
               <Select
                 value={workDuration.toString()}
                 onValueChange={(value) => {
@@ -199,7 +222,7 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
                   }
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="work-duration">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,9 +236,9 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Thời gian nghỉ (phút)</label>
+              <label htmlFor="break-duration" className="text-sm font-medium">Thời gian nghỉ (phút)</label>
               <Select value={breakDuration.toString()} onValueChange={(value) => setBreakDuration(Number(value))}>
-                <SelectTrigger>
+                <SelectTrigger id="break-duration">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -246,3 +269,4 @@ export function PomodoroTimer({ tasks, onTaskComplete }: PomodoroTimerProps) {
     </div>
   )
 }
+

@@ -1,19 +1,71 @@
 import { Router, Request, Response } from 'express'
 import { pool } from '../db'
-import jwt from 'jsonwebtoken'
+import { getUserIdFromJWT } from '../middleware/auth'
 
 const router = Router()
 
-function getUserIdFromJWT(req: Request): number | null {
-  const token = (req as any).cookies?.auth as string | undefined
-  if (!token) return null
+// Get analytics summary
+router.get('/summary', async (req: Request, res: Response) => {
+  const userId = getUserIdFromJWT(req)
+  if (!userId) return res.status(401).json({ message: 'Unauthorized' })
+  
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt') as { userId: number }
-    return payload.userId
-  } catch {
-    return null
+    // Get task statistics
+    const tasksResult = await pool.query(
+      `SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'done') as completed,
+        COUNT(*) FILTER (WHERE status = 'todo') as todo,
+        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+        COUNT(*) FILTER (WHERE deadline < NOW() AND status != 'done') as overdue
+      FROM tasks WHERE user_id=$1`,
+      [userId]
+    )
+
+    // Get completion rate over time
+    const completionRateResult = await pool.query(
+      `SELECT 
+        DATE(updated_at) as date,
+        COUNT(*) FILTER (WHERE status = 'done') as completed,
+        COUNT(*) as total
+      FROM tasks 
+      WHERE user_id=$1 AND updated_at >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(updated_at)
+      ORDER BY date DESC`,
+      [userId]
+    )
+
+    // Get priority distribution
+    const priorityResult = await pool.query(
+      `SELECT priority, COUNT(*) as count
+      FROM tasks 
+      WHERE user_id=$1
+      GROUP BY priority
+      ORDER BY priority DESC`,
+      [userId]
+    )
+
+    // Get productivity streak
+    const streakResult = await pool.query(
+      `SELECT COUNT(DISTINCT DATE(updated_at)) as streak
+      FROM tasks 
+      WHERE user_id=$1 
+        AND status = 'done' 
+        AND updated_at >= NOW() - INTERVAL '30 days'
+        AND updated_at::date >= (SELECT MAX(updated_at::date) - INTERVAL '30 days' FROM tasks WHERE user_id=$1 AND status = 'done')`,
+      [userId]
+    )
+
+    res.json({
+      tasks: tasksResult.rows[0],
+      completionRate: completionRateResult.rows,
+      priorityDistribution: priorityResult.rows,
+      productivityStreak: streakResult.rows[0]?.streak || 0,
+    })
+  } catch (e: any) {
+    res.status(500).json({ message: e?.message || 'Server error' })
   }
-}
+})
 
 router.get('/', async (req: Request, res: Response) => {
   const userId = getUserIdFromJWT(req)

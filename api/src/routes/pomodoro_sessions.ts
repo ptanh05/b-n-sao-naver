@@ -1,19 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { pool } from '../db'
-import jwt from 'jsonwebtoken'
+import { getUserIdFromJWT } from '../middleware/auth'
 
 const router = Router()
-
-function getUserIdFromJWT(req: Request): number | null {
-  const token = (req as any).cookies?.auth as string | undefined
-  if (!token) return null
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_jwt') as { userId: number }
-    return payload.userId
-  } catch {
-    return null
-  }
-}
 
 router.get('/', async (req: Request, res: Response) => {
   const userId = getUserIdFromJWT(req)

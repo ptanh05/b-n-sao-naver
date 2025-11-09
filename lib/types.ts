@@ -1,3 +1,13 @@
+export interface Subtask {
+  id: string
+  taskId: string
+  title: string
+  completed: boolean
+  order: number
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface Task {
   id: string
   title: string
@@ -7,6 +17,9 @@ export interface Task {
   priority: 1 | 2 | 3 | 4 | 5
   estimatedMinutes?: number
   scheduledAt?: Date
+  subtasks?: Subtask[]
+  tags?: string[]
+  category?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -17,6 +30,8 @@ export interface TaskFormData {
   deadline?: string
   priority: 1 | 2 | 3 | 4 | 5
   estimatedMinutes?: number
+  tags?: string[]
+  category?: string
 }
 
 export type ViewMode = "list" | "calendar" | "priority" | "analytics" | "schedule" | "insights"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,35 +11,43 @@ import {
   isSameDay,
   subWeeks,
   addWeeks,
+  formatISO,
+  parseISO,
 } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useHabits, type Habit as ApiHabit } from "@/hooks/use-habits";
 
 interface Habit {
   id: string;
   name: string;
-  description?: string;
   color: string;
   createdAt: Date;
   completions: Date[];
 }
 
+const STORAGE_KEY = "habit_completions";
+
 export function HabitTracker() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const { habits: apiHabits, loading, createHabit, deleteHabit: deleteHabitApi, toggleHabitCompletion: toggleHabitCompletionApi } = useHabits();
   const [newHabitName, setNewHabitName] = useState("");
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isAddingHabit, setIsAddingHabit] = useState(false);
+  const [completions, setCompletions] = useState<Record<string, string[]>>({});
 
+  // Load completions from localStorage
   useEffect(() => {
-    // TODO: Load habits from backend when endpoint is available
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setCompletions(JSON.parse(stored));
+      } catch {
+        setCompletions({});
+      }
+    }
   }, []);
 
-  useEffect(() => {
-    // TODO: Persist habits to backend when endpoint is available
-  }, [habits]);
-
-  const addHabit = () => {
-    if (!newHabitName.trim()) return;
-
+  // Convert API habits to local format
+  const habits: Habit[] = useMemo(() => {
     const colors = [
       "bg-red-500",
       "bg-blue-500",
@@ -48,41 +56,56 @@ export function HabitTracker() {
       "bg-yellow-500",
       "bg-pink-500",
     ];
-    const newHabit: Habit = {
-      id: Date.now().toString(),
-      name: newHabitName.trim(),
-      color: colors[habits.length % colors.length],
-      createdAt: new Date(),
-      completions: [],
-    };
 
-    setHabits([...habits, newHabit]);
-    setNewHabitName("");
-    setIsAddingHabit(false);
+    return apiHabits.map((apiHabit, index) => {
+      const habitCompletions = completions[apiHabit.id] || [];
+      return {
+        id: apiHabit.id,
+        name: apiHabit.name,
+        color: colors[index % colors.length],
+        createdAt: new Date(apiHabit.created_at),
+        completions: habitCompletions.map((dateStr) => parseISO(dateStr)),
+      };
+    });
+  }, [apiHabits, completions]);
+
+  const addHabit = async () => {
+    if (!newHabitName.trim()) return;
+    const created = await createHabit(newHabitName.trim());
+    if (created) {
+      setNewHabitName("");
+      setIsAddingHabit(false);
+    }
   };
 
-  const toggleHabitCompletion = (habitId: string, date: Date) => {
-    setHabits(
-      habits.map((habit) => {
-        if (habit.id !== habitId) return habit;
+  const toggleHabitCompletion = async (habitId: string, date: Date) => {
+    const dateStr = formatISO(date, { representation: "date" });
+    const habitCompletions = completions[habitId] || [];
+    const isCompleted = habitCompletions.includes(dateStr);
 
-        const completions = [...habit.completions];
-        const existingIndex = completions.findIndex((c) => isSameDay(c, date));
+    const newCompletions = { ...completions };
+    if (isCompleted) {
+      newCompletions[habitId] = habitCompletions.filter((d) => d !== dateStr);
+    } else {
+      newCompletions[habitId] = [...habitCompletions, dateStr];
+    }
 
-        if (existingIndex >= 0) {
-          completions.splice(existingIndex, 1);
-        } else {
-          completions.push(date);
-        }
+    setCompletions(newCompletions);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newCompletions));
 
-        return { ...habit, completions };
-      })
-    );
+    // Sync with API
+    await toggleHabitCompletionApi(habitId, dateStr);
   };
 
-  const deleteHabit = (habitId: string) => {
+  const deleteHabit = async (habitId: string) => {
     if (confirm("Bạn có chắc chắn muốn xóa thói quen này?")) {
-      setHabits(habits.filter((h) => h.id !== habitId));
+      const success = await deleteHabitApi(habitId);
+      if (success) {
+        const newCompletions = { ...completions };
+        delete newCompletions[habitId];
+        setCompletions(newCompletions);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newCompletions));
+      }
     }
   };
 
@@ -178,7 +201,12 @@ export function HabitTracker() {
           </div>
 
           {/* Habits Grid */}
-          {habits.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p>Đang tải...</p>
+            </div>
+          ) : habits.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <span className="text-4xl block mb-4">🎯</span>
               <p>Chưa có thói quen nào. Hãy thêm thói quen đầu tiên!</p>
@@ -238,6 +266,7 @@ export function HabitTracker() {
                                 ? "border-muted-foreground/20 cursor-not-allowed"
                                 : "border-muted-foreground/40 hover:border-primary"
                             }`}
+                            aria-label={`${isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"} ${habit.name} ngày ${format(day, "dd/MM")}`}
                           >
                             {isCompleted && <span>✅</span>}
                           </button>
@@ -292,3 +321,4 @@ export function HabitTracker() {
     </div>
   );
 }
+

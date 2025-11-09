@@ -1,3 +1,7 @@
+// Load environment variables first
+import dotenv from 'dotenv'
+dotenv.config()
+
 import express, { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
@@ -10,6 +14,7 @@ import schedulesRoutes from './routes/schedules'
 import analyticsRoutes from './routes/analytics'
 import pomodoroRoutes from './routes/pomodoro_sessions'
 import syncLogsRoutes from './routes/sync_logs'
+import subtaskRoutes from './routes/subtasks'
 import { ensureSchema } from './db'
 
 const app = express()
@@ -32,6 +37,7 @@ app.use('/api/schedules', schedulesRoutes)
 app.use('/api/analytics', analyticsRoutes)
 app.use('/api/pomodoro_sessions', pomodoroRoutes)
 app.use('/api/sync_logs', syncLogsRoutes)
+app.use('/api/subtasks', subtaskRoutes)
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

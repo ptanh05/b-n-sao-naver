@@ -201,3 +201,4 @@ export function ProductivityInsights({ tasks }: ProductivityInsightsProps) {
     </div>
   )
 }
+

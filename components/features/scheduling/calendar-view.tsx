@@ -297,3 +297,4 @@ export function CalendarView({ tasks, onTaskClick, onDateClick }: CalendarViewPr
     </div>
   )
 }
+

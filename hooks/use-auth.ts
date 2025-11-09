@@ -63,6 +63,10 @@ export function useAuth() {
       }
       return res
     } catch (err: any) {
+      // Handle network errors
+      if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')) {
+        return { success: false, message: "Không thể kết nối đến server. Vui lòng kiểm tra API server có đang chạy không." }
+      }
       return { success: false, message: err?.message || "Đăng ký thất bại" }
     }
   }

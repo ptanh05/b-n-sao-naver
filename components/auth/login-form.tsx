@@ -17,9 +17,10 @@ import { useAuth } from "@/hooks/use-auth";
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
+  onForgotPassword?: () => void;
 }
 
-export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({ onSwitchToRegister, onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -92,15 +93,15 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           </form>
 
           <div className="mt-6 text-center space-y-2">
-            <button
-              type="button"
-              className="text-sm text-muted-foreground hover:text-primary"
-              onClick={() => {
-                /* TODO: Implement forgot password */
-              }}
-            >
-              Quên mật khẩu?
-            </button>
+            {onForgotPassword && (
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-primary"
+                onClick={onForgotPassword}
+              >
+                Quên mật khẩu?
+              </button>
+            )}
 
             <div className="text-sm text-muted-foreground">
               Chưa có tài khoản?{" "}

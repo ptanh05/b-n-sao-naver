@@ -48,8 +48,9 @@ export function ScheduleOptimizer({ tasks, onScheduleTask }: ScheduleOptimizerPr
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <label className="text-sm font-medium">Ngày lên lịch</label>
+              <label htmlFor="schedule-date" className="text-sm font-medium">Ngày lên lịch</label>
               <input
+                id="schedule-date"
                 type="date"
                 value={format(selectedDate, "yyyy-MM-dd")}
                 onChange={(e) => setSelectedDate(new Date(e.target.value))}
@@ -57,8 +58,9 @@ export function ScheduleOptimizer({ tasks, onScheduleTask }: ScheduleOptimizerPr
               />
             </div>
             <div className="flex-1">
-              <label className="text-sm font-medium">Tốc độ làm việc</label>
+              <label htmlFor="speed-factor" className="text-sm font-medium">Tốc độ làm việc</label>
               <select
+                id="speed-factor"
                 value={speedFactor}
                 onChange={(e) => setSpeedFactor(Number(e.target.value))}
                 className="w-full mt-1 px-3 py-2 border rounded-md"
@@ -147,3 +149,4 @@ export function ScheduleOptimizer({ tasks, onScheduleTask }: ScheduleOptimizerPr
     </div>
   )
 }
+
