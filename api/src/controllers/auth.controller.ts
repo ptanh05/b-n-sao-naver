@@ -24,13 +24,33 @@ export class AuthController {
       // Detailed server-side log for debugging
       console.error('[auth.register] Failed:', e)
 
+      // Nếu email đã tồn tại: thử đăng nhập luôn với mật khẩu cung cấp
+      if (e?.message === 'Email đã tồn tại') {
+        try {
+          const { user, token } = await authService.login({
+            email: String(req.body?.email || ''),
+            password: String(req.body?.password || ''),
+          })
+          setAuthCookie(res, token)
+          return res.json({
+            success: true,
+            message: 'Email đã tồn tại - đã đăng nhập thành công',
+            user,
+          })
+        } catch (loginErr: any) {
+          // Sai mật khẩu → báo rõ ràng để người dùng chuyển sang màn đăng nhập
+          return res
+            .status(409)
+            .json({ success: false, message: 'Email đã tồn tại. Vui lòng đăng nhập với mật khẩu đúng.' })
+        }
+      }
+
       let status = 500
-      if (e?.message === 'Email đã tồn tại') status = 409
       if (e?.message === 'Thiếu thông tin') status = 400
 
       // Avoid leaking internal DB errors to client
       const clientMessage =
-        e?.message === 'Email đã tồn tại' || e?.message === 'Thiếu thông tin'
+        e?.message === 'Thiếu thông tin'
           ? e.message
           : 'Lỗi server'
 
