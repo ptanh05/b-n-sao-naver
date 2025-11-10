@@ -7,8 +7,7 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "api:build": "tsc -p api/tsconfig.json",
-    "api:start": "node api/dist/server.js",
+    "api:start": "tsx api/src/server.ts",
     "api:dev": "tsx api/src/server.ts",
     "dev:all": "concurrently \"npm run api:dev\" \"npm run dev\"",
     "dev:api": "tsx api/src/server.ts"

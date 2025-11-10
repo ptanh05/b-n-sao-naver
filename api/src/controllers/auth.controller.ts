@@ -21,10 +21,20 @@ export class AuthController {
       setAuthCookie(res, token)
       res.json({ success: true, message: 'Đăng ký thành công', user })
     } catch (e: any) {
-      // Log full error for debugging
-      console.error('[auth.register] error:', e?.message, e?.stack)
-      const status = e.message === 'Email đã tồn tại' ? 200 : 500
-      res.status(status).json({ success: false, message: e?.message || 'Lỗi server' })
+      // Detailed server-side log for debugging
+      console.error('[auth.register] Failed:', e)
+
+      let status = 500
+      if (e?.message === 'Email đã tồn tại') status = 409
+      if (e?.message === 'Thiếu thông tin') status = 400
+
+      // Avoid leaking internal DB errors to client
+      const clientMessage =
+        e?.message === 'Email đã tồn tại' || e?.message === 'Thiếu thông tin'
+          ? e.message
+          : 'Lỗi server'
+
+      res.status(status).json({ success: false, message: clientMessage })
     }
   }
 
