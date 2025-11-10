@@ -1,3 +1,4 @@
+import './config/loadEnv'
 import { Pool } from 'pg'
 
 // Support both POSTGRES_URL and DATABASE_URL
@@ -43,8 +44,18 @@ if (connectionString) {
 }
 
 export async function ensureSchema() {
-  // No-op: bạn đã tạo bảng trên Neon.tech theo schema cung cấp
-  return
+  // Create minimal schema if not exists
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      password TEXT NOT NULL,
+      reset_token TEXT,
+      reset_token_expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `)
 }
 
 

@@ -21,6 +21,8 @@ export class AuthController {
       setAuthCookie(res, token)
       res.json({ success: true, message: 'Đăng ký thành công', user })
     } catch (e: any) {
+      // Log full error for debugging
+      console.error('[auth.register] error:', e?.message, e?.stack)
       const status = e.message === 'Email đã tồn tại' ? 200 : 500
       res.status(status).json({ success: false, message: e?.message || 'Lỗi server' })
     }

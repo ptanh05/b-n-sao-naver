@@ -1,4 +1,4 @@
-const CACHE_NAME = 'time-management-v1'
+const CACHE_NAME = 'time-management-v3'
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -35,6 +35,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
+    return
+  }
+
+  // Skip non-http(s) schemes like chrome-extension
+  const url = new URL(event.request.url)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return
+  }
+
+  // Skip Next.js runtime and build assets to avoid serving stale chunks
+  if (url.pathname.startsWith('/_next/')) {
     return
   }
 

@@ -6,17 +6,20 @@ import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#15803d",
+};
+
 export const metadata: Metadata = {
   title: "Time Management App - Quản lý thời gian",
   description: "Ứng dụng quản lý thời gian dành cho sinh viên Việt Nam",
   generator: "Next.js",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
-  themeColor: "#15803d",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
