@@ -26,16 +26,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Time Management",
   },
-  icons: {
-    icon: "/placeholder-logo.png",
-    apple: [
-      {
-        url: "/icon-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-    ],
-  },
 };
 
 export default function RootLayout({

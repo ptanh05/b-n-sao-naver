@@ -2,7 +2,6 @@ const CACHE_NAME = 'time-management-v3'
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/placeholder-logo.png',
 ]
 
 // Install event - cache resources
