@@ -17,16 +17,47 @@ if (connectionString && typeof connectionString !== 'string') {
 }
 
 // Create pool with proper configuration
-export const pool = connectionString
-  ? new Pool({
-      connectionString,
-      // Add SSL for Neon.tech
-      ssl: connectionString.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
-    })
-  : new Pool({
-      // This will fail but with a clearer error message
-      connectionString: 'postgresql://localhost:5432/test',
-    })
+function createPool(conn: string | undefined): Pool {
+  if (!conn) {
+    return new Pool({ connectionString: 'postgresql://localhost:5432/test' })
+  }
+
+  // Parse the URL and construct a safe Pool config explicitly
+  try {
+    const url = new URL(conn)
+
+    // Remove flags that can cause incompatibilities
+    url.searchParams.delete('channel_binding')
+
+    const isNeon = url.hostname.includes('neon.tech')
+
+    const config: any = {
+      host: url.hostname,
+      port: Number(url.port || '5432'),
+      user: decodeURIComponent(url.username),
+      password: String(url.password || ''),
+      database: decodeURIComponent(url.pathname.replace(/^\//, '')),
+      ssl: isNeon ? { rejectUnauthorized: false } : undefined,
+      // Keep original connectionString for reference if needed
+      // connectionString: url.toString(),
+    }
+
+    if (!config.password) {
+      console.error('[db] ERROR: Connection string has empty password')
+    }
+
+    return new Pool(config)
+  } catch (e) {
+    console.warn('[db] Could not parse connection string, falling back to raw connectionString', e)
+    const config: any = { connectionString: conn }
+    if (conn.includes('neon.tech')) {
+      config.ssl = { rejectUnauthorized: false }
+    }
+    return new Pool(config)
+  }
+}
+
+export const pool = createPool(connectionString)
 
 // Test connection
 pool.on('error', (err) => {
@@ -45,7 +76,8 @@ if (connectionString) {
 
 export async function ensureSchema() {
   // Create minimal schema if not exists
-  await pool.query(`
+  try {
+    await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -56,6 +88,10 @@ export async function ensureSchema() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `)
+  } catch (err) {
+    console.error('[db] ensureSchema failed:', err)
+    throw err
+  }
 }
 
 
