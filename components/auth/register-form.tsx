@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "@/hooks/use-toast";
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -71,8 +72,11 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       formData.password,
       formData.fullName
     );
-    if (!result.success) {
+    if (result.success) {
+      toast({ title: "Thành công", description: "Tạo tài khoản và đăng nhập thành công." });
+    } else {
       setError(result.message);
+      toast({ title: "Không thành công", description: result.message, variant: "destructive" as any });
     }
 
     setIsLoading(false);

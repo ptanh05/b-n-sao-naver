@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "@/hooks/use-toast";
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
@@ -41,8 +42,11 @@ export function LoginForm({ onSwitchToRegister, onForgotPassword }: LoginFormPro
     }
 
     const result = await login(email, password);
-    if (!result.success) {
+    if (result.success) {
+      toast({ title: "Đăng nhập thành công" });
+    } else {
       setError(result.message);
+      toast({ title: "Đăng nhập thất bại", description: result.message, variant: "destructive" as any });
     }
 
     setIsLoading(false);
