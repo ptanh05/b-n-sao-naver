@@ -25,19 +25,16 @@ export class AuthService {
       throw new Error('Thiếu thông tin')
     }
 
-    // Check if user exists
     const existing = await pool.query('SELECT id FROM users WHERE email=$1', [email])
     if (existing.rowCount && existing.rowCount > 0) {
       throw new Error('Email đã tồn tại')
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user
     const result = await pool.query(
       'INSERT INTO users(email, name, password) VALUES($1,$2,$3) RETURNING id, email, name, created_at',
-      [email, resolvedName, hashedPassword]
+      [email, resolvedName, hashedPassword],
     )
 
     const userRow = result.rows[0]
@@ -48,7 +45,6 @@ export class AuthService {
       createdAt: userRow.created_at,
     }
 
-    // Generate token
     const token = jwt.sign({ userId: user.id }, this.jwtSecret, { expiresIn: '7d' })
 
     return { user, token }
@@ -61,7 +57,6 @@ export class AuthService {
       throw new Error('Thiếu thông tin')
     }
 
-    // Find user
     const result = await pool.query('SELECT * FROM users WHERE email=$1', [email])
     if (result.rowCount === 0) {
       throw new Error('Email không tồn tại')
@@ -69,13 +64,11 @@ export class AuthService {
 
     const userRow = result.rows[0]
 
-    // Verify password
     const isValidPassword = await bcrypt.compare(password, userRow.password)
     if (!isValidPassword) {
       throw new Error('Mật khẩu không đúng')
     }
 
-    // Generate token
     const token = jwt.sign({ userId: userRow.id }, this.jwtSecret, { expiresIn: '7d' })
 
     const user = {
@@ -91,7 +84,7 @@ export class AuthService {
   async getUserById(userId: number) {
     const result = await pool.query(
       'SELECT id, email, name, created_at FROM users WHERE id=$1',
-      [userId]
+      [userId],
     )
 
     if (result.rowCount === 0) return null
@@ -112,25 +105,20 @@ export class AuthService {
 
     const result = await pool.query('SELECT id, email FROM users WHERE email=$1', [email])
     if (result.rowCount === 0) {
-      // Don't reveal if email exists for security
       return { success: true, message: 'Nếu email tồn tại, bạn sẽ nhận được link reset password' }
     }
 
-    // Generate reset token
     const resetToken = jwt.sign(
       { userId: result.rows[0].id, type: 'password-reset' },
       this.jwtSecret,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' },
     )
 
-    // Store reset token in database
     await pool.query(
       'UPDATE users SET reset_token=$1, reset_token_expires_at=now() + interval \'1 hour\' WHERE id=$2',
-      [resetToken, result.rows[0].id]
+      [resetToken, result.rows[0].id],
     )
 
-    // In a real app, send email here
-    // For now, we'll return the token (in production, this should be sent via email)
     return { success: true, message: 'Nếu email tồn tại, bạn sẽ nhận được link reset password', resetToken }
   }
 
@@ -146,23 +134,20 @@ export class AuthService {
         throw new Error('Invalid token type')
       }
 
-      // Verify token in database
       const result = await pool.query(
         'SELECT id FROM users WHERE reset_token=$1 AND reset_token_expires_at > now()',
-        [token]
+        [token],
       )
 
       if (result.rowCount === 0) {
         throw new Error('Token không hợp lệ hoặc đã hết hạn')
       }
 
-      // Hash new password
       const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-      // Update password and clear reset token
       await pool.query(
         'UPDATE users SET password=$1, reset_token=NULL, reset_token_expires_at=NULL WHERE id=$2',
-        [hashedPassword, payload.userId]
+        [hashedPassword, payload.userId],
       )
 
       return { success: true, message: 'Đặt lại mật khẩu thành công' }
@@ -174,4 +159,5 @@ export class AuthService {
     }
   }
 }
+
 

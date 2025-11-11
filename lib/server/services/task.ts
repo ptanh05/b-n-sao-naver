@@ -16,7 +16,7 @@ export class TaskService {
   async getTasksByUserId(userId: number) {
     const result = await pool.query(
       'SELECT * FROM tasks WHERE user_id=$1 ORDER BY created_at DESC',
-      [userId]
+      [userId],
     )
     return result.rows
   }
@@ -24,7 +24,7 @@ export class TaskService {
   async getTaskById(id: string, userId: number) {
     const result = await pool.query(
       'SELECT * FROM tasks WHERE id=$1 AND user_id=$2',
-      [id, userId]
+      [id, userId],
     )
     return result.rows[0] || null
   }
@@ -45,7 +45,7 @@ export class TaskService {
         estimatedMinutes ?? null,
         category ?? null,
         tags ? JSON.stringify(tags) : null,
-      ]
+      ],
     )
     return result.rows[0]
   }
@@ -79,7 +79,7 @@ export class TaskService {
         tags ? JSON.stringify(tags) : null,
         id,
         userId,
-      ]
+      ],
     )
 
     if (result.rowCount === 0) throw new Error('Task not found')
@@ -89,7 +89,7 @@ export class TaskService {
   async deleteTask(id: string, userId: number) {
     const result = await pool.query(
       'DELETE FROM tasks WHERE id=$1 AND user_id=$2',
-      [id, userId]
+      [id, userId],
     )
 
     if (result.rowCount === 0) throw new Error('Task not found')
@@ -120,11 +120,12 @@ export class TaskService {
           t.tags ? JSON.stringify(t.tags) : null,
           t.createdAt ?? new Date(),
           t.updatedAt ?? new Date(),
-        ]
+        ],
       )
       inserted.push(r.rows[0])
     }
     return inserted
   }
 }
+
 

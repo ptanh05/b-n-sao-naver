@@ -1,6 +1,10 @@
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const candidates = [
   path.resolve(process.cwd(), '.env'),
@@ -28,4 +32,5 @@ if (!loaded) {
   dotenv.config()
   console.warn('[env] No explicit .env file found; relying on existing process.env values')
 }
+
 

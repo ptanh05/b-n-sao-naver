@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
-import '@/api/src/config/loadEnv'
-import { TaskService } from '@/api/src/services/task.service'
+import '@/lib/server/load-env'
+import { TaskService } from '@/lib/server/services/task'
 
 const taskService = new TaskService()
 const jwtSecret = process.env.JWT_SECRET || 'dev_jwt'

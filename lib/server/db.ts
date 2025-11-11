@@ -1,8 +1,6 @@
-import './config/loadEnv'
+import './load-env'
 import { Pool } from 'pg'
 
-// Support both POSTGRES_URL and DATABASE_URL
-// Trim whitespace and ensure it's a valid string
 const connectionString = (process.env.POSTGRES_URL || process.env.DATABASE_URL)?.trim()
 
 if (!connectionString) {
@@ -10,23 +8,19 @@ if (!connectionString) {
   console.error('[db] Please set one of these environment variables in your .env file')
 }
 
-// Validate connection string format
 if (connectionString && typeof connectionString !== 'string') {
   console.error('[db] ERROR: Connection string must be a string')
   throw new Error('Invalid DATABASE_URL: must be a string')
 }
 
-// Create pool with proper configuration
 function createPool(conn: string | undefined): Pool {
   if (!conn) {
     return new Pool({ connectionString: 'postgresql://localhost:5432/test' })
   }
 
-  // Parse the URL and construct a safe Pool config explicitly
   try {
     const url = new URL(conn)
 
-    // Remove flags that can cause incompatibilities
     url.searchParams.delete('channel_binding')
 
     const isNeon = url.hostname.includes('neon.tech')
@@ -38,8 +32,6 @@ function createPool(conn: string | undefined): Pool {
       password: String(url.password || ''),
       database: decodeURIComponent(url.pathname.replace(/^\//, '')),
       ssl: isNeon ? { rejectUnauthorized: false } : undefined,
-      // Keep original connectionString for reference if needed
-      // connectionString: url.toString(),
     }
 
     if (!config.password) {
@@ -59,15 +51,12 @@ function createPool(conn: string | undefined): Pool {
 
 export const pool = createPool(connectionString)
 
-// Test connection
 pool.on('error', (err) => {
   console.error('[db] Unexpected error on idle client', err)
 })
 
-// Log connection status
 if (connectionString) {
   console.log('[db] Database connection configured')
-  // Mask password in log
   const maskedUrl = connectionString.replace(/:([^:@]+)@/, ':****@')
   console.log('[db] Connection string:', maskedUrl)
 } else {
@@ -75,7 +64,6 @@ if (connectionString) {
 }
 
 export async function ensureSchema() {
-  // Create minimal schema if not exists
   try {
     await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -93,5 +81,10 @@ export async function ensureSchema() {
     throw err
   }
 }
+
+ensureSchema().catch((err) => {
+  console.error('[db] Failed to ensure schema during startup', err)
+})
+
 
 

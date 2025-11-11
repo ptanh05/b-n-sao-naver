@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
-import '@/api/src/config/loadEnv'
-import { AuthService } from '@/api/src/services/auth.service'
+import '@/lib/server/load-env'
+import { AuthService } from '@/lib/server/services/auth'
 
 const authService = new AuthService()
 const jwtSecret = process.env.JWT_SECRET || 'dev_jwt'
